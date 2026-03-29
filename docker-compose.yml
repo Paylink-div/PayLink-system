@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  # خدمة قاعدة البيانات (MySQL)
+  db:
+    image: mysql:5.7
+    container_name: paylink_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: paylink_admin_system
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+      # تأكد أن ملف الـ SQL موجود في نفس المجلد بجانب هذا الملف
+      - "./paylink_admin_system (1).sql:/docker-entrypoint-initdb.d/init.sql"
+    networks:
+      - paylink_network
+
+  # خدمة المنظومة (PHP + Apache)
+  app:
+    build: .
+    container_name: paylink_app
+    restart: always
+    ports:
+      - "80:80"
+    environment:
+      # هذه المتغيرات هي التي يقرأها ملف db_connect.php
+      DB_HOST: db
+      DB_NAME: paylink_admin_system
+      DB_USER: root
+      DB_PASS: root
+    depends_on:
+      - db
+    networks:
+      - paylink_network
+
+  # خدمة إدارة قواعد البيانات (phpMyAdmin) لكي تتمكن من متابعة البيانات أونلاين
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: paylink_pma
+    restart: always
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: db
+      PMA_USER: root
+      PMA_PASSWORD: root
+    depends_on:
+      - db
+    networks:
+      - paylink_network
+
+networks:
+  paylink_network:
+    driver: bridge
