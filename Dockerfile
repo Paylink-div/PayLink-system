@@ -1,27 +1,28 @@
-# استخدام نسخة PHP 7.4 مع Apache
+# استخدام نسخة مستقرة من PHP 7.4 مع Apache
 FROM php:7.4-apache
 
-# 1. تثبيت إضافات MySQL الضرورية للمنظومة
+# 1. تثبيت إضافات قاعدة البيانات الضرورية
 RUN docker-php-ext-install mysqli pdo pdo_mysql
 
-# 2. حل مشكلة الـ MPM (تعطيل الموديل المسبب للانهيار وتفعيل المستقر)
-RUN a2dismod mpm_event || true && a2enmod mpm_prefork || true
+# 2. حل مشكلة الانهيار (تعطيل الموديلات المتعارضة وتفعيل المستقر)
+# هذا الجزء هو المسؤول عن حل رسالة "More than one MPM loaded"
+RUN a2dismod mpm_event || true && \
+    a2dismod mpm_worker || true && \
+    a2enmod mpm_prefork || true
 
-# 3. تفعيل خاصية Rewrite لروابط Apache
+# 3. تفعيل خاصية الروابط (Rewrite)
 RUN a2enmod rewrite
 
-# 4. ضبط اسم السيرفر لتفادي رسائل التحذير
+# 4. ضبط إعدادات السيرفر الأساسية
 RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
-# 5. ضبط مسار العمل ونسخ ملفات المنظومة
+# 5. تجهيز ملفات المنظومة
 WORKDIR /var/www/html
 COPY . /var/www/html/
-
-# 6. ضبط الصلاحيات للمجلد
 RUN chown -R www-data:www-data /var/www/html
 
-# 7. تحديد المنفذ الافتراضي
+# 6. تحديد المنفذ (Railway يستخدم منفذ 80 افتراضياً)
 EXPOSE 80
 
-# تشغيل السيرفر في المقدمة
+# تشغيل السيرفر
 CMD ["apache2-foreground"]
